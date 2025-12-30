@@ -23,6 +23,8 @@ import com.velocitypowered.proxy.protocol.MinecraftPacket;
 import com.velocitypowered.proxy.protocol.ProtocolUtils;
 import com.velocitypowered.proxy.util.except.QuietDecoderException;
 import io.netty.buffer.ByteBuf;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class KnownPacksPacket implements MinecraftPacket {
@@ -31,7 +33,15 @@ public class KnownPacksPacket implements MinecraftPacket {
     private static final QuietDecoderException TOO_MANY_PACKS =
         new QuietDecoderException("too many known packs");
 
-    private List<KnownPack> packs;
+  private List<KnownPack> packs;
+
+  public KnownPacksPacket() {
+    packs = new ArrayList<>();
+  }
+
+  public KnownPacksPacket(List<KnownPack> packs) {
+    this.packs = packs;
+  }
 
     @Override
     public void decode(ByteBuf buf, ProtocolUtils.Direction direction,
@@ -41,10 +51,10 @@ public class KnownPacksPacket implements MinecraftPacket {
           throw TOO_MANY_PACKS;
         }
 
-        final List<KnownPack> packs = ProtocolUtils.newList(packCount);
+      final List<KnownPack> packs = ProtocolUtils.newList(packCount);
 
         for (int i = 0; i < packCount; i++) {
-            packs.add(KnownPack.read(buf));
+          packs.add(KnownPack.read(buf));
         }
 
         this.packs = packs;
@@ -53,7 +63,7 @@ public class KnownPacksPacket implements MinecraftPacket {
     @Override
     public void encode(ByteBuf buf, ProtocolUtils.Direction direction,
                        ProtocolVersion protocolVersion) {
-        ProtocolUtils.writeVarInt(buf, packs.size());
+      ProtocolUtils.writeVarInt(buf, packs.size());
 
         for (KnownPack pack : packs) {
             pack.write(buf);
