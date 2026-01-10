@@ -23,67 +23,101 @@ import com.velocitypowered.proxy.protocol.MinecraftPacket;
 import com.velocitypowered.proxy.protocol.ProtocolUtils;
 import com.velocitypowered.proxy.util.except.QuietDecoderException;
 import io.netty.buffer.ByteBuf;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class KnownPacksPacket implements MinecraftPacket {
 
-    private static final int MAX_LENGTH_PACKS = Integer.getInteger("velocity.max-known-packs", 64);
-    private static final QuietDecoderException TOO_MANY_PACKS =
-        new QuietDecoderException("too many known packs");
+  private static final int MAX_LENGTH_PACKS = Integer.getInteger("velocity.max-known-packs", 64);
+  private static final QuietDecoderException TOO_MANY_PACKS =
+      new QuietDecoderException("too many known packs");
 
   private List<KnownPack> packs;
 
   public KnownPacksPacket() {
-    packs = new ArrayList<>();
+    packs = ProtocolUtils.newList(0);
   }
 
   public KnownPacksPacket(List<KnownPack> packs) {
     this.packs = packs;
   }
 
-    @Override
-    public void decode(ByteBuf buf, ProtocolUtils.Direction direction,
-                       ProtocolVersion protocolVersion) {
-        final int packCount = ProtocolUtils.readVarInt(buf);
-        if (direction == ProtocolUtils.Direction.SERVERBOUND && packCount > MAX_LENGTH_PACKS) {
-          throw TOO_MANY_PACKS;
-        }
-
-      final List<KnownPack> packs = ProtocolUtils.newList(packCount);
-
-        for (int i = 0; i < packCount; i++) {
-          packs.add(KnownPack.read(buf));
-        }
-
-        this.packs = packs;
+  @Override
+  public void decode(ByteBuf buf, ProtocolUtils.Direction direction,
+                     ProtocolVersion protocolVersion) {
+    final int packCount = ProtocolUtils.readVarInt(buf);
+    if (direction == ProtocolUtils.Direction.SERVERBOUND && packCount > MAX_LENGTH_PACKS) {
+      throw TOO_MANY_PACKS;
     }
 
-    @Override
-    public void encode(ByteBuf buf, ProtocolUtils.Direction direction,
-                       ProtocolVersion protocolVersion) {
-      ProtocolUtils.writeVarInt(buf, packs.size());
+    final List<KnownPack> packs = ProtocolUtils.newList(packCount);
 
-        for (KnownPack pack : packs) {
-            pack.write(buf);
-        }
+    for (int i = 0; i < packCount; i++) {
+      packs.add(KnownPack.read(buf));
     }
 
-    @Override
-    public boolean handle(MinecraftSessionHandler handler) {
-        return handler.handle(this);
-    }
+    this.packs = packs;
+  }
 
-    public record KnownPack(String namespace, String id, String version) {
-        private static KnownPack read(ByteBuf buf) {
-            return new KnownPack(ProtocolUtils.readString(buf), ProtocolUtils.readString(buf), ProtocolUtils.readString(buf));
-        }
+  @Override
+  public void encode(ByteBuf buf, ProtocolUtils.Direction direction,
+                     ProtocolVersion protocolVersion) {
+    ProtocolUtils.writeVarInt(buf, packs.size());
 
-        private void write(ByteBuf buf) {
-            ProtocolUtils.writeString(buf, namespace);
-            ProtocolUtils.writeString(buf, id);
-            ProtocolUtils.writeString(buf, version);
-        }
+    for (KnownPack pack : packs) {
+      pack.write(buf);
     }
+  }
+
+  @Override
+  public boolean handle(MinecraftSessionHandler handler) {
+    return handler.handle(this);
+  }
+
+  public List<KnownPack> getPacks() {
+    return packs;
+  }
+
+  @Override
+  public String toString() {
+    return "KnownPacksPacket{" +
+        "packs=" + packs +
+        '}';
+  }
+
+  public record KnownPack(String namespace, String id, String version) {
+      private static KnownPack read(ByteBuf buf) {
+        return new KnownPack(ProtocolUtils.readString(buf), ProtocolUtils.readString(buf), ProtocolUtils.readString(buf));
+      }
+
+      private void write(ByteBuf buf) {
+        ProtocolUtils.writeString(buf, namespace);
+        ProtocolUtils.writeString(buf, id);
+        ProtocolUtils.writeString(buf, version);
+      }
+
+      @Override
+      public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        KnownPack knownPack = (KnownPack) o;
+        return Objects.equals(id, knownPack.id) && Objects.equals(version, knownPack.version) && Objects.equals(namespace, knownPack.namespace);
+      }
+
+      @Override
+      public int hashCode() {
+        return Objects.hash(namespace, id, version);
+      }
+
+      @Override
+      @NotNull
+      public String toString() {
+        return "KnownPack{" +
+            "namespace='" + namespace + '\'' +
+            ", id='" + id + '\'' +
+            ", version='" + version + '\'' +
+            '}';
+      }
+  }
 }
